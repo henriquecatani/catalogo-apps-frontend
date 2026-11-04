@@ -3,6 +3,7 @@ export interface Developer {
   name: string;
   icon?: string;
   apps?: App[];
+  app_count?: number;
 }
 
 export interface Review {
