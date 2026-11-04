@@ -28,7 +28,10 @@ export default function AppCardItem({
   const appId = id ?? app?.id;
   const appName = name ?? app?.name ?? "Nome do Aplicativo";
   const appIcon = icon ?? app?.icon;
-  const devName = developerName ?? app?.developer?.name ?? "Desenvolvedor";
+  const devName =
+    developerName ??
+    (typeof app?.developer === "string" ? app.developer : app?.developer?.name) ??
+    "Desenvolvedor";
   const description =
     small_description ??
     app?.small_description ??

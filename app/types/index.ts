@@ -22,6 +22,6 @@ export interface App {
   markdown_description?: string;
   rating: number;
   reviews?: Review[];
-  developer?: Developer;
+  developer?: Developer | string;
   pricing: string;
 }
