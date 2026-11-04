@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 export default function AppStaticPage() {
   const router = useRouter();
 
+  // Dados mockados fixos para servir de base estática
   const app = {
     name: "App Name",
     developer: "Developer Name",
@@ -47,7 +48,9 @@ export default function AppStaticPage() {
 
   return (
     <main className="container py-4" style={{ maxWidth: "900px" }}>
+      {/* Cabeçalho superior do App */}
       <div className="d-flex align-items-start gap-3 my-4">
+        {/* Botão de Voltar */}
         <button
           type="button"
           onClick={() => router.back()}
@@ -57,11 +60,13 @@ export default function AppStaticPage() {
           <i className="bi bi-arrow-left fs-3"></i>
         </button>
 
+        {/* Ícone / Logo do App */}
         <div
           className="bg-secondary rounded-4 flex-shrink-0"
           style={{ width: "90px", height: "90px" }}
         ></div>
 
+        {/* Título, Desenvolvedor e Botão Website */}
         <div className="flex-grow-1">
           <h1 className="fw-normal mb-0" style={{ fontSize: "2rem" }}>
             {app.name}
@@ -89,6 +94,7 @@ export default function AppStaticPage() {
           </a>
         </div>
 
+        {/* Avaliação e Badge de Precificação */}
         <div className="text-end d-flex flex-column align-items-end">
           <div className="display-6 fw-bold text-dark me-1">
             {app.rating.toFixed(1)}
@@ -110,6 +116,7 @@ export default function AppStaticPage() {
         </div>
       </div>
 
+      {/* Card Principal com Descrição Detalhada e Captura de Tela */}
       <section className="bg-white rounded-3 shadow-sm p-4 p-md-5 my-5">
         <p className="text-secondary lh-base mb-4" style={{ fontSize: "0.95rem" }}>
           Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nam rhoncus,
@@ -124,6 +131,7 @@ export default function AppStaticPage() {
           eros sed nibh vulputate tempor sit amet a ipsum.
         </p>
 
+        {/* Imagem / Print do App */}
         <div className="text-center my-4">
           <div
             className="d-inline-block border rounded p-1 bg-light w-100"
@@ -151,6 +159,7 @@ export default function AppStaticPage() {
         </p>
       </section>
 
+      {/* Seção de Reviews / Avaliações */}
       <section className="mt-5">
         <span
           className="badge rounded-pill px-4 py-2 mb-4"
