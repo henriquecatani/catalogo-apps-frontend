@@ -37,6 +37,25 @@ export default function AboutPage() {
             </a>{" "}
             .
           </p>
+           <p>
+            Sou Mateus Weiler, no {" "}
+            <a
+              href="https://github.com/MateusRW-br"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Github
+            </a>{" "}
+            e no {" "}
+            <a
+                href="https://instagram.com/mateus.roquew"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Instagram
+            </a>{" "}
+            .
+          </p>
         </div>
         <div className={styles.ctas}>
           <a
