@@ -173,7 +173,7 @@ function DevelopersListContent() {
             return (
               <Link
                 key={dev.id ?? index}
-                href={dev.id ? `/developers/${dev.id}` : "#"}
+                href={dev.id ? `/developers/dev?id=${dev.id}` : "#"}
                 className="bg-white rounded-4 shadow-sm px-4 py-3 d-flex align-items-center justify-content-between text-decoration-none text-dark transition-all"
                 style={{
                   border: "1px solid #f0f0f0",

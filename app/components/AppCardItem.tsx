@@ -38,7 +38,9 @@ export default function AppCardItem({
     "Descrição curta sobre o aplicativo";
   const appRating = rating ?? app?.rating ?? 4.5;
   const appPricing = pricing ?? app?.pricing ?? "Free";
-  const appLink = link ?? app?.link ?? (appId ? `/apps/${appId}` : "#");
+  const appLink =
+    link ??
+    (appId ? `/apps/app?id=${appId}` : app?.link ?? "/apps/app");
 
   return (
     <div
