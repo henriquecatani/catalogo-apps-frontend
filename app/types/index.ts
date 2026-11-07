@@ -20,11 +20,24 @@ export interface Developer {
   app_count?: number;
 }
 
+export interface ReviewUser {
+  id: string | number;
+  name: string;
+  email?: string;
+  profile?: unknown;
+}
+
 export interface Review {
   id: string | number;
   name: string;
-  markdown_text: string;
+  markdownText?: string;
+  markdown_text?: string;
   rating: number;
+  appId?: string | number;
+  userId?: string | number;
+  createdAt?: string;
+  updatedAt?: string;
+  user?: ReviewUser;
   app?: App;
 }
 

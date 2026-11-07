@@ -4,14 +4,14 @@ import { FormEvent, Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { Developer } from "@/app/types";
+import { Developer, PaginatedResponse } from "@/app/types";
 
 const API_BASE = "http://localhost:3000";
 const ITEMS_PER_PAGE = 9;
 
 const FALLBACK_DEVS: Developer[] = Array.from({ length: 18 }, (_, i) => ({
   id: i + 1,
-  name: i === 1 ? "Nome do Desenvolvedor" : "Nome do Desenvolvedor",
+  name: "Nome do Desenvolvedor",
   icon: "",
   app_count: i === 1 ? 2 : 5,
 }));
@@ -27,7 +27,8 @@ function DevelopersListContent() {
   );
 
   const [devs, setDevs] = useState<Developer[]>(FALLBACK_DEVS.slice(0, ITEMS_PER_PAGE));
-  const [totalPages, setTotalPages] = useState<number>(2);
+  const [totalPages, setTotalPages] = useState<number>(1);
+  const [totalItems, setTotalItems] = useState<number | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams();
@@ -39,44 +40,48 @@ function DevelopersListContent() {
     router.replace(`/developers?${queryString}`, { scroll: false });
 
     async function loadDevs() {
-      try {
-        const res = await fetch(`${API_BASE}/api/developers?${queryString}`);
-        if (!res.ok) throw new Error("API_BASE failed");
-        const data = await res.json();
-        const items: Developer[] = Array.isArray(data)
-          ? data
-          : Array.isArray(data?.items)
-          ? data.items
-          : Array.isArray(data?.data)
-          ? data.data
-          : [];
-        if (items.length > 0) {
-          setDevs(items.slice(0, ITEMS_PER_PAGE));
-          setTotalPages(
-            data?.totalPages ??
-              (items.length > ITEMS_PER_PAGE
-                ? Math.ceil(items.length / ITEMS_PER_PAGE)
-                : Math.max(page, 1))
-          );
-          return;
-        }
-      } catch {
+      const urls = [
+        `${API_BASE}/api/developers?${queryString}`,
+        `/api/developers?${queryString}`,
+      ];
+
+      for (const url of urls) {
         try {
-          const res = await fetch(`/api/developers?${queryString}`);
-          if (res.ok) {
-            const data = await res.json();
-            const items: Developer[] = Array.isArray(data)
-              ? data
-              : Array.isArray(data?.items)
-              ? data.items
-              : [];
-            if (items.length > 0) {
-              setDevs(items.slice(0, ITEMS_PER_PAGE));
-              return;
-            }
+          const res = await fetch(url);
+          if (!res.ok) continue;
+          const json: PaginatedResponse<Developer> & {
+            items?: Developer[];
+            totalPages?: number;
+          } = await res.json();
+
+          const items: Developer[] = Array.isArray(json)
+            ? json
+            : Array.isArray(json?.data)
+            ? json.data
+            : Array.isArray(json?.items)
+            ? json.items
+            : [];
+
+          // If searchQuery is provided and backend doesn't filter by search, filter client-side
+          const filteredItems = searchQuery
+            ? items.filter((d) =>
+                d.name?.toLowerCase().includes(searchQuery.toLowerCase())
+              )
+            : items;
+
+          const metaTotalPages =
+            json?.meta?.totalPages ??
+            json?.totalPages ??
+            Math.max(1, Math.ceil(filteredItems.length / ITEMS_PER_PAGE));
+
+          setDevs(filteredItems);
+          setTotalPages(Math.max(1, metaTotalPages));
+          if (typeof json?.meta?.total === "number") {
+            setTotalItems(json.meta.total);
           }
+          return;
         } catch {
-          // Fallback to offline mock data
+          // Try next URL
         }
       }
 
@@ -89,12 +94,9 @@ function DevelopersListContent() {
         );
       }
 
-      if (filtered.length === 0) {
-        filtered = [...FALLBACK_DEVS];
-      }
-
       const calculatedPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
       setTotalPages(calculatedPages);
+      setTotalItems(filtered.length);
       const start = (page - 1) * ITEMS_PER_PAGE;
       setDevs(filtered.slice(start, start + ITEMS_PER_PAGE));
     }
@@ -165,6 +167,13 @@ function DevelopersListContent() {
 
       {/* Developers List */}
       <section className="mx-auto mt-5" style={{ maxWidth: "860px" }}>
+        {totalItems !== null && (
+          <div className="mb-3 text-secondary small">
+            Total encontrado: {totalItems}{" "}
+            {totalItems === 1 ? "desenvolvedor" : "desenvolvedores"}
+          </div>
+        )}
+
         <div className="d-flex flex-column gap-3">
           {devs.map((dev, index) => {
             const count = dev.app_count ?? dev.apps?.length ?? 0;
@@ -215,49 +224,53 @@ function DevelopersListContent() {
               </Link>
             );
           })}
+
+          {devs.length === 0 && (
+            <div className="bg-white rounded-4 p-4 text-center text-secondary">
+              Nenhum desenvolvedor encontrado.
+            </div>
+          )}
         </div>
 
-        {/* Pagination Controls */}
-        {totalPages > 1 && (
-          <nav aria-label="Paginação de desenvolvedores" className="mt-5 d-flex justify-content-center">
-            <ul className="pagination">
-              <li className={`page-item ${page <= 1 ? "disabled" : ""}`}>
+        {/* Pagination Controls based on meta.totalPages */}
+        <nav aria-label="Paginação de desenvolvedores" className="mt-5 d-flex justify-content-center">
+          <ul className="pagination">
+            <li className={`page-item ${page <= 1 ? "disabled" : ""}`}>
+              <button
+                type="button"
+                className="page-link"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1}
+              >
+                Anterior
+              </button>
+            </li>
+            {pageNumbers.map((num) => (
+              <li
+                key={num}
+                className={`page-item ${page === num ? "active" : ""}`}
+              >
                 <button
                   type="button"
                   className="page-link"
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page <= 1}
+                  onClick={() => setPage(num)}
                 >
-                  Anterior
+                  {num}
                 </button>
               </li>
-              {pageNumbers.map((num) => (
-                <li
-                  key={num}
-                  className={`page-item ${page === num ? "active" : ""}`}
-                >
-                  <button
-                    type="button"
-                    className="page-link"
-                    onClick={() => setPage(num)}
-                  >
-                    {num}
-                  </button>
-                </li>
-              ))}
-              <li className={`page-item ${page >= totalPages ? "disabled" : ""}`}>
-                <button
-                  type="button"
-                  className="page-link"
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={page >= totalPages}
-                >
-                  Próxima
-                </button>
-              </li>
-            </ul>
-          </nav>
-        )}
+            ))}
+            <li className={`page-item ${page >= totalPages ? "disabled" : ""}`}>
+              <button
+                type="button"
+                className="page-link"
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page >= totalPages}
+              >
+                Próxima
+              </button>
+            </li>
+          </ul>
+        </nav>
       </section>
     </main>
   );

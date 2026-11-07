@@ -13,9 +13,9 @@ const DEFAULT_APPS: Partial<App>[] = Array.from({ length: 6 }, (_, i) => ({
   id: i + 1,
   name: "Nome do Aplicativo",
   developer: "Dev Name",
-  small_description: "Descrição curta sobre o aplicativo em questão",
+  smallDescription: "Descrição curta sobre o aplicativo em questão",
   rating: 4.5,
-  pricing: "Free",
+  pricing: "free",
   icon: "",
 }));
 
