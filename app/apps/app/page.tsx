@@ -3,7 +3,8 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams, useParams } from "next/navigation";
 import Image from "next/image";
-import { App, Review } from "@/app/types";
+import Link from "next/link";
+import { App, PaginatedResponse, Review } from "@/app/types";
 
 const API_BASE = "http://localhost:3000";
 const REVIEW_LIMIT = 10;
@@ -12,13 +13,13 @@ const DEFAULT_APP: App = {
   id: 1,
   name: "App Name",
   developer: "Developer Name",
-  small_description:
+  smallDescription:
     "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam mattis tristique erat.",
-  markdown_description: `Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nam rhoncus, quam sit amet mollis bibendum, nibh nunc vehicula massa, vel molestie ante risus nec nulla. Fusce fermentum mi turpis. Maecenas interdum et mauris nec maximus. Orci varius natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Curabitur vel diam in massa malesuada aliquet. Phasellus ut leo id urna lacinia lacinia. Cras vitae vulputate massa, quis blandit velit. Nullam efficitur bibendum elit, at fringilla velit ullamcorper nec. Donec porta lobortis placerat. Fusce at justo ut arcu posuere malesuada sed ut nibh. Nam in eros sed nibh vulputate tempor sit amet a ipsum.
+  markdownDescription: `Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nam rhoncus, quam sit amet mollis bibendum, nibh nunc vehicula massa, vel molestie ante risus nec nulla. Fusce fermentum mi turpis. Maecenas interdum et mauris nec maximus. Orci varius natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Curabitur vel diam in massa malesuada aliquet. Phasellus ut leo id urna lacinia lacinia. Cras vitae vulputate massa, quis blandit velit. Nullam efficitur bibendum elit, at fringilla velit ullamcorper nec. Donec porta lobortis placerat. Fusce at justo ut arcu posuere malesuada sed ut nibh. Nam in eros sed nibh vulputate tempor sit amet a ipsum.
 
 Fusce quis dui ac purus tincidunt fermentum. Sed fringilla finibus erat non placerat. Suspendisse semper quis sem sit amet pulvinar. Cras at placerat metus, quis lobortis metus. Phasellus eleifend ante quis ante feugiat pharetra. Morbi at volutpat ante. Aliquam lobortis sed magna in pretium. Morbi feugiat lorem mattis, porta tortor ac, rhoncus diam. Mauris fermentum ipsum id diam placerat feugiat eu id est. Praesent consectetur placerat quam, eget pharetra orci ullamcorper vitae. In ut faucibus nunc. Duis nec faucibus metus, sit amet lacinia nisl.`,
   rating: 4.5,
-  pricing: "Free",
+  pricing: "free",
   link: "#",
   icon: "",
 };
@@ -44,7 +45,7 @@ function AppDetailContent() {
   const [totalReviewPages, setTotalReviewPages] = useState(1);
   const [totalReviewsCount, setTotalReviewsCount] = useState<number | null>(null);
 
-  // Fetch App Data from /apps/{app_id}
+  // Fetch App Data from /api/apps/{app_id}
   useEffect(() => {
     let isMounted = true;
     async function loadApp() {
@@ -60,7 +61,7 @@ function AppDetailContent() {
         try {
           const res = await fetch(url);
           if (res.ok) {
-            const data = await res.json();
+            const data: App = await res.json();
             if (data && (data.name || data.id)) {
               if (isMounted) {
                 setApp(data);
@@ -89,7 +90,7 @@ function AppDetailContent() {
     };
   }, [appId]);
 
-  // Fetch Reviews Data from apps/{app_id}/reviews?page=1&limit=10
+  // Fetch Reviews Data from /api/apps/{app_id}/reviews?page=1&limit=10
   useEffect(() => {
     let isMounted = true;
     async function loadReviews() {
@@ -106,34 +107,38 @@ function AppDetailContent() {
         try {
           const res = await fetch(url);
           if (res.ok) {
-            const data = await res.json();
-            const items: Review[] = Array.isArray(data)
-              ? data
-              : Array.isArray(data?.items)
-              ? data.items
-              : Array.isArray(data?.data)
-              ? data.data
-              : Array.isArray(data?.reviews)
-              ? data.reviews
+            const json: PaginatedResponse<Review> & {
+              items?: Review[];
+              reviews?: Review[];
+              total?: number;
+              totalCount?: number;
+              totalPages?: number;
+            } = await res.json();
+
+            const items: Review[] = Array.isArray(json)
+              ? json
+              : Array.isArray(json?.data)
+              ? json.data
+              : Array.isArray(json?.items)
+              ? json.items
+              : Array.isArray(json?.reviews)
+              ? json.reviews
               : [];
 
             if (isMounted) {
               setReviews(items);
               const total =
-                data?.total ??
-                data?.totalCount ??
-                (data?.totalPages ? data.totalPages * REVIEW_LIMIT : null);
-              if (total !== null) {
-                setTotalReviewsCount(total);
-              }
-              const calculatedPages =
-                data?.totalPages ??
-                (total
-                  ? Math.ceil(total / REVIEW_LIMIT)
-                  : items.length === REVIEW_LIMIT
-                  ? reviewPage + 1
-                  : reviewPage);
-              setTotalReviewPages(Math.max(1, calculatedPages));
+                json?.meta?.total ??
+                json?.total ??
+                json?.totalCount ??
+                items.length;
+              setTotalReviewsCount(total);
+
+              const metaTotalPages =
+                json?.meta?.totalPages ??
+                json?.totalPages ??
+                Math.max(1, Math.ceil(total / REVIEW_LIMIT));
+              setTotalReviewPages(Math.max(1, metaTotalPages));
               setLoadingReviews(false);
             }
             return;
@@ -148,17 +153,19 @@ function AppDetailContent() {
         const fallbackReviews: Review[] = [
           {
             id: (reviewPage - 1) * 10 + 1,
-            name: "Anonymous",
-            markdown_text:
+            name: "Muito bom o aplicativo",
+            markdownText:
               "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nam rhoncus, quam sit amet mollis bibendum, nibh nunc vehicula massa, vel molestie ante risus nec nulla. Fusce fermentum mi turpis.",
             rating: 5,
+            user: { id: 1, name: "Anonymous" },
           },
           {
             id: (reviewPage - 1) * 10 + 2,
-            name: "username",
-            markdown_text:
+            name: "Aplicativo muito bom",
+            markdownText:
               "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nam rhoncus, quam sit amet mollis bibendum, nibh nunc vehicula massa.",
             rating: 4,
+            user: { id: 2, name: "username" },
           },
         ];
         setReviews(fallbackReviews);
@@ -190,6 +197,11 @@ function AppDetailContent() {
     return stars;
   };
 
+  const devId =
+    typeof app.developer === "object" && app.developer !== null
+      ? app.developer.id
+      : app.developerId;
+
   const devName =
     typeof app.developer === "object" && app.developer !== null
       ? app.developer.name
@@ -197,11 +209,15 @@ function AppDetailContent() {
       ? app.developer
       : "Developer Name";
 
-  // Use markdown_description (or fallback markdown_desctiption typo) rendered in plain text
+  const shortDescription =
+    app.smallDescription ?? app.small_description ?? "";
+
+  // Use markdownDescription (or markdown_description) rendered in plain text
   const longDescription =
+    app.markdownDescription ||
     app.markdown_description ||
     (app as unknown as { markdown_desctiption?: string }).markdown_desctiption ||
-    app.small_description ||
+    shortDescription ||
     "";
 
   return (
@@ -247,13 +263,22 @@ function AppDetailContent() {
             {app.name}
           </h1>
           <p className="text-success mb-2" style={{ fontSize: "0.95rem" }}>
-            {devName}
+            {devId ? (
+              <Link
+                href={`/developers/dev?id=${devId}`}
+                className="text-success text-decoration-none"
+              >
+                {devName}
+              </Link>
+            ) : (
+              devName
+            )}
           </p>
           <p
             className="text-secondary mb-3"
             style={{ fontSize: "0.9rem", maxWidth: "450px" }}
           >
-            {app.small_description}
+            {shortDescription}
           </p>
 
           <a
@@ -274,23 +299,25 @@ function AppDetailContent() {
         {/* Avaliação e Badge de Precificação */}
         <div className="text-end d-flex flex-column align-items-end">
           <div className="display-6 fw-bold text-dark me-1">
-            {(app.rating ?? 4.5).toFixed(1)}
+            {(app.rating ?? 0).toFixed(1)}
           </div>
-          <div>{renderStars(app.rating ?? 4.5)}</div>
+          <div>{renderStars(app.rating ?? 0)}</div>
           <span
             className="text-secondary d-block mt-1 mb-3"
             style={{ fontSize: "0.75rem" }}
           >
             {totalReviewsCount !== null
-              ? `${totalReviewsCount.toLocaleString()} avaliações`
-              : "1,5 mil avaliações"}
+              ? `${totalReviewsCount.toLocaleString()} ${
+                  totalReviewsCount === 1 ? "avaliação" : "avaliações"
+                }`
+              : "0 avaliações"}
           </span>
 
           <span
             className="badge rounded-pill px-3 py-2 fw-normal"
             style={{ backgroundColor: "#1e8238", fontSize: "0.85rem" }}
           >
-            {app.pricing || "Free"}
+            {app.pricing || "free"}
           </span>
         </div>
       </div>
@@ -325,14 +352,16 @@ function AppDetailContent() {
 
         <div className="d-flex flex-column gap-3">
           {reviews.map((rev) => {
-            const author =
-              (rev as unknown as { author?: string }).author ||
-              rev.name ||
-              "Anonymous";
             const title =
+              rev.name ||
               (rev as unknown as { title?: string }).title ||
               "Avaliação";
+            const author =
+              rev.user?.name ||
+              (rev as unknown as { author?: string }).author ||
+              "Usuário";
             const comment =
+              rev.markdownText ||
               rev.markdown_text ||
               (rev as unknown as { comment?: string }).comment ||
               "";
@@ -377,60 +406,58 @@ function AppDetailContent() {
           )}
         </div>
 
-        {/* Controle de Páginas para as Reviews */}
-        {totalReviewPages > 1 && (
-          <nav
-            aria-label="Paginação de avaliações"
-            className="mt-4 d-flex justify-content-center"
-          >
-            <ul className="pagination">
-              <li className={`page-item ${reviewPage <= 1 ? "disabled" : ""}`}>
-                <button
-                  type="button"
-                  className="page-link"
-                  onClick={() => setReviewPage((p) => Math.max(1, p - 1))}
-                  disabled={reviewPage <= 1}
-                >
-                  Anterior
-                </button>
-              </li>
-              {Array.from({ length: totalReviewPages }, (_, i) => i + 1).map(
-                (pageNum) => (
-                  <li
-                    key={pageNum}
-                    className={`page-item ${
-                      reviewPage === pageNum ? "active" : ""
-                    }`}
-                  >
-                    <button
-                      type="button"
-                      className="page-link"
-                      onClick={() => setReviewPage(pageNum)}
-                    >
-                      {pageNum}
-                    </button>
-                  </li>
-                )
-              )}
-              <li
-                className={`page-item ${
-                  reviewPage >= totalReviewPages ? "disabled" : ""
-                }`}
+        {/* Controle de Páginas para as Reviews com metadados*/}
+        <nav
+          aria-label="Paginação de avaliações"
+          className="mt-4 d-flex justify-content-center"
+        >
+          <ul className="pagination">
+            <li className={`page-item ${reviewPage <= 1 ? "disabled" : ""}`}>
+              <button
+                type="button"
+                className="page-link"
+                onClick={() => setReviewPage((p) => Math.max(1, p - 1))}
+                disabled={reviewPage <= 1}
               >
-                <button
-                  type="button"
-                  className="page-link"
-                  onClick={() =>
-                    setReviewPage((p) => Math.min(totalReviewPages, p + 1))
-                  }
-                  disabled={reviewPage >= totalReviewPages}
+                Anterior
+              </button>
+            </li>
+            {Array.from({ length: totalReviewPages }, (_, i) => i + 1).map(
+              (pageNum) => (
+                <li
+                  key={pageNum}
+                  className={`page-item ${
+                    reviewPage === pageNum ? "active" : ""
+                  }`}
                 >
-                  Próxima
-                </button>
-              </li>
-            </ul>
-          </nav>
-        )}
+                  <button
+                    type="button"
+                    className="page-link"
+                    onClick={() => setReviewPage(pageNum)}
+                  >
+                    {pageNum}
+                  </button>
+                </li>
+              )
+            )}
+            <li
+              className={`page-item ${
+                reviewPage >= totalReviewPages ? "disabled" : ""
+              }`}
+            >
+              <button
+                type="button"
+                className="page-link"
+                onClick={() =>
+                  setReviewPage((p) => Math.min(totalReviewPages, p + 1))
+                }
+                disabled={reviewPage >= totalReviewPages}
+              >
+                Próxima
+              </button>
+            </li>
+          </ul>
+        </nav>
       </section>
     </main>
   );

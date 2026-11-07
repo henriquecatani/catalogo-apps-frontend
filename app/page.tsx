@@ -12,34 +12,38 @@ const FALLBACK_APPS: Partial<App>[] = Array.from({ length: 10 }, (_, i) => ({
   id: i + 1,
   name: "Nome do Aplicativo",
   developer: "Desenvolvedor",
-  small_description: "Descrição curta sobre o aplicativo em questão",
+  smallDescription: "Descrição curta sobre o aplicativo",
   rating: 4.5,
-  pricing: "Free",
+  pricing: "free",
   icon: "",
 }));
 
-async function fetchAppsList(endpoint: string): Promise<Partial<App>[]> {
-  try {
-    const res = await fetch(`${API_BASE}${endpoint}`);
-    if (!res.ok) throw new Error("Failed to fetch from API_BASE");
-    const data = await res.json();
-    if (Array.isArray(data) && data.length > 0) {
-      return data.slice(0, 10);
-    }
-  } catch {
-    try {
-      const res = await fetch(endpoint);
-      if (res.ok) {
-        const data = await res.json();
-        if (Array.isArray(data) && data.length > 0) {
-          return data.slice(0, 10);
+async function fetchAppsList(endpoints: string[]): Promise<Partial<App>[]> {
+  let anySuccess = false;
+  for (const endpoint of endpoints) {
+    const urls = [`${API_BASE}${endpoint}`, endpoint];
+    for (const url of urls) {
+      try {
+        const res = await fetch(url);
+        if (!res.ok) continue;
+        anySuccess = true;
+        const json = await res.json();
+        const items: Partial<App>[] = Array.isArray(json)
+          ? json
+          : Array.isArray(json?.data)
+          ? json.data
+          : Array.isArray(json?.items)
+          ? json.items
+          : [];
+        if (items.length > 0) {
+          return items.slice(0, 10);
         }
+      } catch {
+        // Try next URL
       }
-    } catch {
-      // Fallback to prototype placeholders when API is offline
     }
   }
-  return FALLBACK_APPS;
+  return anySuccess ? [] : FALLBACK_APPS;
 }
 
 export default function HomePage() {
@@ -50,9 +54,22 @@ export default function HomePage() {
   const [textEditorApps, setTextEditorApps] = useState<Partial<App>[]>(FALLBACK_APPS);
 
   useEffect(() => {
-    fetchAppsList("/api/apps/trending").then(setTrendingApps);
-    fetchAppsList("/api/apps?category=browser").then(setBrowserApps);
-    fetchAppsList("/api/apps?category=text-editor").then(setTextEditorApps);
+    fetchAppsList([
+      "/api/apps?page=1&limit=10",
+      "/api/apps/trending",
+    ]).then(setTrendingApps);
+
+    fetchAppsList([
+      "/api/apps?category=Browsers&page=1&limit=10",
+      "/api/apps?category=Browser&page=1&limit=10",
+      "/api/apps?category=browser&page=1&limit=10",
+    ]).then(setBrowserApps);
+
+    fetchAppsList([
+      "/api/apps?category=Text%20Editor&page=1&limit=10",
+      "/api/apps?category=Text%20Editors&page=1&limit=10",
+      "/api/apps?category=text-editor&page=1&limit=10",
+    ]).then(setTextEditorApps);
   }, []);
 
   function handleSearch(e: FormEvent) {

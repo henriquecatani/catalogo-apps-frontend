@@ -8,6 +8,7 @@ export interface AppCardItemProps {
   name?: string;
   icon?: string;
   developerName?: string;
+  smallDescription?: string;
   small_description?: string;
   rating?: number;
   pricing?: string;
@@ -20,6 +21,7 @@ export default function AppCardItem({
   name,
   icon,
   developerName,
+  smallDescription,
   small_description,
   rating,
   pricing,
@@ -33,7 +35,9 @@ export default function AppCardItem({
     (typeof app?.developer === "string" ? app.developer : app?.developer?.name) ??
     "Desenvolvedor";
   const description =
+    smallDescription ??
     small_description ??
+    app?.smallDescription ??
     app?.small_description ??
     "Descrição curta sobre o aplicativo";
   const appRating = rating ?? app?.rating ?? 4.5;

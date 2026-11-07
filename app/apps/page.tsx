@@ -3,16 +3,16 @@
 import { FormEvent, Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import AppCardItem from "@/app/components/AppCardItem";
-import { App } from "@/app/types";
+import { App, PaginatedResponse } from "@/app/types";
 
 const API_BASE = "http://localhost:3000";
 const ITEMS_PER_PAGE = 9;
 
 const CATEGORIES = [
-  "Browser",
-  "Text Editor",
-  "Word Processor",
-  "Office Suite",
+  { label: "Browsers", value: "Browsers" },
+  { label: "Text Editor", value: "Text Editor" },
+  { label: "Word Processor", value: "Word Processor" },
+  { label: "Office Suite", value: "Office Suite" },
 ];
 
 const PRICING_OPTIONS = [
@@ -22,16 +22,16 @@ const PRICING_OPTIONS = [
   { label: "FOSS", value: "foss" },
 ];
 
-const FALLBACK_APPS: (Partial<App> & { category?: string })[] = Array.from(
+const FALLBACK_APPS: Partial<App>[] = Array.from(
   { length: 18 },
   (_, i) => ({
     id: i + 1,
     name: i === 0 ? "Nome do Aplicativo" : `Nome do Aplicativo ${i + 1}`,
     developer: "Desenvolvedor",
-    small_description: "Descrição curta sobre o aplicativo em questão",
+    smallDescription: "Descrição curta sobre o aplicativo",
     rating: Number((4.5 - (i % 5) * 0.2).toFixed(1)),
-    pricing: i % 4 === 0 ? "Free" : i % 4 === 1 ? "Paid" : i % 4 === 2 ? "Freemium" : "FOSS",
-    category: CATEGORIES[i % CATEGORIES.length],
+    pricing: i % 4 === 0 ? "free" : i % 4 === 1 ? "paid" : i % 4 === 2 ? "freemium" : "foss",
+    category: CATEGORIES[i % CATEGORIES.length].value,
     icon: "",
   })
 );
@@ -48,20 +48,25 @@ function AppsListContent() {
   const [selectedPricing, setSelectedPricing] = useState<string | null>(
     searchParams.get("pricing")
   );
-  const [orderBy, setOrderBy] = useState<"name" | "rating">("name");
+  const [orderBy, setOrderBy] = useState<"rating" | "name">(
+    searchParams.get("sortBy") === "alphabetical" ? "name" : "rating"
+  );
   const [page, setPage] = useState<number>(
     Number(searchParams.get("page")) > 0 ? Number(searchParams.get("page")) : 1
   );
 
   const [apps, setApps] = useState<Partial<App>[]>(FALLBACK_APPS.slice(0, ITEMS_PER_PAGE));
-  const [totalPages, setTotalPages] = useState<number>(2);
+  const [totalPages, setTotalPages] = useState<number>(1);
+  const [totalItems, setTotalItems] = useState<number | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams();
     if (selectedCategory) params.set("category", selectedCategory);
     if (selectedPricing) params.set("pricing", selectedPricing);
     if (searchQuery) params.set("search", searchQuery);
-    params.set("order", orderBy);
+    if (orderBy === "name") {
+      params.set("sortBy", "alphabetical");
+    }
     params.set("page", String(page));
     params.set("limit", String(ITEMS_PER_PAGE));
 
@@ -69,50 +74,45 @@ function AppsListContent() {
     router.replace(`/apps?${queryString}`, { scroll: false });
 
     async function loadApps() {
-      try {
-        const res = await fetch(`${API_BASE}/api/apps?${queryString}`);
-        if (!res.ok) throw new Error("API_BASE failed");
-        const data = await res.json();
-        const items: Partial<App>[] = Array.isArray(data)
-          ? data
-          : Array.isArray(data?.items)
-          ? data.items
-          : Array.isArray(data?.data)
-          ? data.data
-          : [];
-        if (items.length > 0) {
-          const sorted = sortItems(items, orderBy);
-          setApps(sorted.slice(0, ITEMS_PER_PAGE));
-          setTotalPages(
-            data?.totalPages ??
-              (items.length > ITEMS_PER_PAGE
-                ? Math.ceil(items.length / ITEMS_PER_PAGE)
-                : Math.max(page, 1))
-          );
-          return;
-        }
-      } catch {
+      const urls = [
+        `${API_BASE}/api/apps?${queryString}`,
+        `/api/apps?${queryString}`,
+      ];
+
+      for (const url of urls) {
         try {
-          const res = await fetch(`/api/apps?${queryString}`);
-          if (res.ok) {
-            const data = await res.json();
-            const items: Partial<App>[] = Array.isArray(data)
-              ? data
-              : Array.isArray(data?.items)
-              ? data.items
-              : [];
-            if (items.length > 0) {
-              const sorted = sortItems(items, orderBy);
-              setApps(sorted.slice(0, ITEMS_PER_PAGE));
-              return;
-            }
+          const res = await fetch(url);
+          if (!res.ok) continue;
+          const json: PaginatedResponse<Partial<App>> & {
+            items?: Partial<App>[];
+            totalPages?: number;
+          } = await res.json();
+
+          const items: Partial<App>[] = Array.isArray(json)
+            ? json
+            : Array.isArray(json?.data)
+            ? json.data
+            : Array.isArray(json?.items)
+            ? json.items
+            : [];
+
+          const metaTotalPages =
+            json?.meta?.totalPages ??
+            json?.totalPages ??
+            Math.max(1, Math.ceil(items.length / ITEMS_PER_PAGE));
+
+          setApps(items);
+          setTotalPages(Math.max(1, metaTotalPages));
+          if (typeof json?.meta?.total === "number") {
+            setTotalItems(json.meta.total);
           }
+          return;
         } catch {
-          // Use filtered fallback items when offline
+          // Try next URL
         }
       }
 
-      // Fallback filtering, sorting, and pagination
+      // Offline fallback filtering, sorting, and pagination
       let filtered = [...FALLBACK_APPS];
       if (selectedCategory) {
         filtered = filtered.filter(
@@ -131,18 +131,14 @@ function AppsListContent() {
         filtered = filtered.filter(
           (item) =>
             item.name?.toLowerCase().includes(q) ||
-            item.small_description?.toLowerCase().includes(q)
+            (item.smallDescription ?? item.small_description)?.toLowerCase().includes(q)
         );
-      }
-
-      // If fallback filter would be empty, still display 9 prototype cards for preview
-      if (filtered.length === 0) {
-        filtered = [...FALLBACK_APPS];
       }
 
       const sorted = sortItems(filtered, orderBy);
       const calculatedPages = Math.max(1, Math.ceil(sorted.length / ITEMS_PER_PAGE));
       setTotalPages(calculatedPages);
+      setTotalItems(sorted.length);
       const start = (page - 1) * ITEMS_PER_PAGE;
       setApps(sorted.slice(start, start + ITEMS_PER_PAGE));
     }
@@ -165,9 +161,9 @@ function AppsListContent() {
     setSearchQuery(searchInput.trim());
   }
 
-  function toggleCategory(cat: string) {
+  function toggleCategory(catValue: string) {
     setPage(1);
-    setSelectedCategory((prev) => (prev === cat ? null : cat));
+    setSelectedCategory((prev) => (prev === catValue ? null : catValue));
   }
 
   function togglePricing(priceValue: string) {
@@ -176,7 +172,8 @@ function AppsListContent() {
   }
 
   function toggleOrder() {
-    setOrderBy((prev) => (prev === "name" ? "rating" : "name"));
+    setPage(1);
+    setOrderBy((prev) => (prev === "rating" ? "name" : "rating"));
   }
 
   const pageNumbers = useMemo(
@@ -237,11 +234,11 @@ function AppsListContent() {
             onClick={toggleOrder}
             className="btn bg-white rounded-pill shadow-sm px-4 py-2 d-flex align-items-center gap-2"
             style={{ border: "1px solid #e5e5e5" }}
-            title="Alternar ordenação entre Nome e Rating"
+            title="Alternar ordenação entre Nota e Ordem Alfabética"
           >
             <i className="bi bi-arrow-down"></i>
             <span>
-              Ordenar ({orderBy === "name" ? "Name" : "Rating"})
+              Ordenar ({orderBy === "name" ? "Nome" : "Nota"})
             </span>
           </button>
         </div>
@@ -258,13 +255,14 @@ function AppsListContent() {
             </div>
             <ul className="list-group list-group-flush">
               {CATEGORIES.map((category) => {
-                const isSelected = selectedCategory === category;
+                const isSelected =
+                  selectedCategory?.toLowerCase() === category.value.toLowerCase();
                 return (
                   <li
-                    key={category}
+                    key={category.value}
                     className="list-group-item px-3 py-1 d-flex align-items-center gap-2"
                     style={{ cursor: "pointer", fontSize: "0.85rem" }}
-                    onClick={() => toggleCategory(category)}
+                    onClick={() => toggleCategory(category.value)}
                   >
                     <input
                       type="checkbox"
@@ -273,7 +271,7 @@ function AppsListContent() {
                       onChange={() => {}}
                       style={{ cursor: "pointer" }}
                     />
-                    <span className="text-secondary">{category}</span>
+                    <span className="text-secondary">{category.label}</span>
                   </li>
                 );
               })}
@@ -287,7 +285,8 @@ function AppsListContent() {
             </div>
             <ul className="list-group list-group-flush">
               {PRICING_OPTIONS.map((option) => {
-                const isSelected = selectedPricing === option.value;
+                const isSelected =
+                  selectedPricing?.toLowerCase() === option.value.toLowerCase();
                 return (
                   <li
                     key={option.value}
@@ -312,15 +311,27 @@ function AppsListContent() {
 
         {/* Right 9 App Cards Grid */}
         <div className="col-12 col-md-9 col-lg-10">
+          {totalItems !== null && (
+            <div className="mb-3 text-secondary small">
+              Total encontrado: {totalItems} {totalItems === 1 ? "aplicativo" : "aplicativos"}
+            </div>
+          )}
+
           <div className="row g-4">
             {apps.slice(0, ITEMS_PER_PAGE).map((app, index) => (
               <div key={app.id ?? index} className="col-12 col-sm-6 col-lg-4">
                 <AppCardItem app={app} />
               </div>
             ))}
+
+            {apps.length === 0 && (
+              <div className="col-12 text-center text-secondary py-5">
+                Nenhum aplicativo encontrado para os filtros selecionados.
+              </div>
+            )}
           </div>
 
-          {/* Pagination Controls */}
+          {/* Pagination Controls based on meta.totalPages */}
           <nav aria-label="Paginação de aplicativos" className="mt-5 d-flex justify-content-center">
             <ul className="pagination">
               <li className={`page-item ${page <= 1 ? "disabled" : ""}`}>
