@@ -4,6 +4,13 @@ import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams, useParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
+import ReviewFormCard from "@/app/components/ReviewFormCard";
+import {
+  fetchAndSaveProfileByUserId,
+  getProfile,
+  getUser,
+  isAuthenticated,
+} from "@/app/login/auth_service";
 import { App, PaginatedResponse, Review } from "@/app/types";
 
 const API_BASE = "http://localhost:3000";
@@ -44,6 +51,29 @@ function AppDetailContent() {
   const [reviewPage, setReviewPage] = useState(1);
   const [totalReviewPages, setTotalReviewPages] = useState(1);
   const [totalReviewsCount, setTotalReviewsCount] = useState<number | null>(null);
+
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+  const [showReviewForm, setShowReviewForm] = useState(false);
+  const [editingReview, setEditingReview] = useState<Review | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  // Sync current logged-in user ID
+  useEffect(() => {
+    function syncUser() {
+      if (!isAuthenticated()) {
+        setCurrentUserId(null);
+        return;
+      }
+      const user = getUser();
+      const profile = getProfile();
+      const uId = user?.sub ?? user?.id ?? profile?.userId ?? null;
+      setCurrentUserId(uId !== null ? Number(uId) : null);
+    }
+
+    syncUser();
+    window.addEventListener("auth-change", syncUser);
+    return () => window.removeEventListener("auth-change", syncUser);
+  }, []);
 
   // Fetch App Data from /api/apps/{app_id}
   useEffect(() => {
@@ -88,7 +118,7 @@ function AppDetailContent() {
     return () => {
       isMounted = false;
     };
-  }, [appId]);
+  }, [appId, refreshKey]);
 
   // Fetch Reviews Data from /api/apps/{app_id}/reviews?page=1&limit=10
   useEffect(() => {
@@ -157,6 +187,7 @@ function AppDetailContent() {
             markdownText:
               "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nam rhoncus, quam sit amet mollis bibendum, nibh nunc vehicula massa, vel molestie ante risus nec nulla. Fusce fermentum mi turpis.",
             rating: 5,
+            userId: 1,
             user: { id: 1, name: "Anonymous" },
           },
           {
@@ -165,6 +196,7 @@ function AppDetailContent() {
             markdownText:
               "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nam rhoncus, quam sit amet mollis bibendum, nibh nunc vehicula massa.",
             rating: 4,
+            userId: 2,
             user: { id: 2, name: "username" },
           },
         ];
@@ -179,7 +211,51 @@ function AppDetailContent() {
     return () => {
       isMounted = false;
     };
-  }, [appId, reviewPage]);
+  }, [appId, reviewPage, refreshKey]);
+
+  async function handleNewReviewClick() {
+    if (!isAuthenticated()) {
+      router.push("/login");
+      return;
+    }
+
+    const user = getUser();
+    let profile = getProfile();
+    const uId = user?.sub ?? user?.id ?? profile?.userId ?? null;
+
+    if (uId === null) {
+      router.push("/login");
+      return;
+    }
+
+    if (!profile) {
+      profile = await fetchAndSaveProfileByUserId(uId, API_BASE);
+    }
+
+    if (!profile) {
+      router.push("/login");
+      return;
+    }
+
+    setCurrentUserId(Number(uId));
+    setEditingReview(null);
+    setShowReviewForm(true);
+  }
+
+  function handleEditReviewClick(rev: Review) {
+    if (!isAuthenticated()) {
+      router.push("/login");
+      return;
+    }
+    setEditingReview(rev);
+    setShowReviewForm(true);
+  }
+
+  function handleReviewSaved() {
+    setShowReviewForm(false);
+    setEditingReview(null);
+    setRefreshKey((k) => k + 1);
+  }
 
   const renderStars = (rating: number = 5) => {
     const stars = [];
@@ -335,20 +411,49 @@ function AppDetailContent() {
       {/* Seção de Reviews / Avaliações */}
       <section className="mt-5">
         <div className="d-flex align-items-center justify-content-between mb-4">
-          <span
-            className="badge rounded-pill px-4 py-2"
+          <div className="d-flex align-items-center gap-3">
+            <span
+              className="badge rounded-pill px-4 py-2"
+              style={{
+                backgroundColor: "#e58a43",
+                fontSize: "0.9rem",
+                fontWeight: 500,
+              }}
+            >
+              Reviews
+            </span>
+            {loadingReviews && (
+              <span className="text-muted small">Carregando avaliações...</span>
+            )}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => void handleNewReviewClick()}
+            className="btn rounded-pill px-4 py-2 fw-medium shadow-sm"
             style={{
-              backgroundColor: "#e58a43",
+              backgroundColor: "#8ce071",
+              color: "#222222",
               fontSize: "0.9rem",
-              fontWeight: 500,
             }}
           >
-            Reviews
-          </span>
-          {loadingReviews && (
-            <span className="text-muted small">Carregando avaliações...</span>
-          )}
+            + Avaliar aplicativo
+          </button>
         </div>
+
+        {/* Card de Criação / Edição de Review */}
+        {showReviewForm && currentUserId !== null && (
+          <ReviewFormCard
+            appId={appId}
+            userId={currentUserId}
+            initialReview={editingReview}
+            onSuccess={handleReviewSaved}
+            onCancel={() => {
+              setShowReviewForm(false);
+              setEditingReview(null);
+            }}
+          />
+        )}
 
         <div className="d-flex flex-column gap-3">
           {reviews.map((rev) => {
@@ -367,6 +472,12 @@ function AppDetailContent() {
               "";
             const rating = rev.rating ?? 5;
 
+            const revOwnerId = rev.userId ?? rev.user?.id;
+            const isOwnReview =
+              currentUserId !== null &&
+              revOwnerId !== undefined &&
+              Number(revOwnerId) === Number(currentUserId);
+
             return (
               <div
                 key={rev.id}
@@ -379,12 +490,26 @@ function AppDetailContent() {
                   >
                     {title}
                   </h5>
-                  <span
-                    className="text-secondary"
-                    style={{ fontSize: "0.85rem" }}
-                  >
-                    {author}
-                  </span>
+                  <div className="d-flex align-items-center gap-2">
+                    <span
+                      className="text-secondary"
+                      style={{ fontSize: "0.85rem" }}
+                    >
+                      {author}
+                    </span>
+                    {isOwnReview && (
+                      <button
+                        type="button"
+                        onClick={() => handleEditReviewClick(rev)}
+                        className="btn btn-sm btn-outline-secondary rounded-circle d-flex align-items-center justify-content-center"
+                        style={{ width: "30px", height: "30px" }}
+                        title="Editar avaliação"
+                        aria-label="Editar avaliação"
+                      >
+                        <i className="bi bi-pencil"></i>
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 <p
