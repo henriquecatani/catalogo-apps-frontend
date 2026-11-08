@@ -15,13 +15,11 @@ const API_BASE = "http://localhost:3000";
 export default function RegisterPage() {
   const router = useRouter();
 
-  // Dados do Usuário
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
-  // Dados do Perfil
   const [fullName, setFullName] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
   const [birthDate, setBirthDate] = useState("");
@@ -166,7 +164,7 @@ export default function RegisterPage() {
             {/* Username */}
             <div className="mb-3">
               <label className="form-label fs-6 text-dark mb-1">
-                Nome de usuário (username):
+                Nome de usuário:
               </label>
               <input
                 value={username}

@@ -3,25 +3,46 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { isAuthenticated } from "../login/auth_service";
+import {
+  getProfile,
+  isAuthenticated,
+  UserProfile,
+} from "../login/auth_service";
 import { useEffect, useState } from "react";
 
 export default function Header() {
   const pathname = usePathname();
   const [autenticado, setAuthenticated] = useState(false);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
 
   useEffect(() => {
-    setAuthenticated(isAuthenticated());
-  }, []);
+    function syncAuthState() {
+      setAuthenticated(isAuthenticated());
+      setProfile(getProfile());
+    }
+
+    syncAuthState();
+    window.addEventListener("auth-change", syncAuthState);
+    window.addEventListener("storage", syncAuthState);
+    return () => {
+      window.removeEventListener("auth-change", syncAuthState);
+      window.removeEventListener("storage", syncAuthState);
+    };
+  }, [pathname]);
 
   const isAppsActive = pathname?.startsWith("/apps");
   const isDevsActive = pathname?.startsWith("/developers");
+
+  const avatarUrl = autenticado && profile?.avatarUrl ? profile.avatarUrl : null;
 
   return (
     <header className="py-3 px-4">
       <div className="container-fluid d-flex align-items-center justify-content-between position-relative">
         {/* Brand Logo & Name */}
-        <Link href="/" className="d-flex align-items-center gap-2 text-decoration-none text-dark">
+        <Link
+          href="/"
+          className="d-flex align-items-center gap-2 text-decoration-none text-dark"
+        >
           <Image
             src="/logo.png"
             alt="Butiápps Logo"
@@ -66,17 +87,33 @@ export default function Header() {
         {/* Right User Profile / Login Button */}
         <div>
           <Link
-            href={autenticado ? "/admin" : "/login"}
-            className="d-flex align-items-center justify-content-center rounded-circle text-decoration-none shadow-sm"
+            href={autenticado ? "/profile" : "/login"}
+            className="d-flex align-items-center justify-content-center rounded-circle text-decoration-none shadow-sm overflow-hidden"
             style={{
               width: "42px",
               height: "42px",
               backgroundColor: "#a3e496",
               color: "#ffffff",
             }}
-            title={autenticado ? "Painel" : "Entrar"}
+            title={
+              autenticado
+                ? profile?.fullName || "Meu Perfil"
+                : "Entrar"
+            }
           >
-            <i className="bi bi-person fs-4"></i>
+            {avatarUrl ? (
+              <Image
+                src={avatarUrl}
+                alt={profile?.fullName || "Avatar do usuário"}
+                width={42}
+                height={42}
+                className="rounded-circle"
+                style={{ width: "42px", height: "42px", objectFit: "cover" }}
+                unoptimized
+              />
+            ) : (
+              <i className="bi bi-person fs-4"></i>
+            )}
           </Link>
         </div>
       </div>
