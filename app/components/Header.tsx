@@ -44,7 +44,7 @@ export default function Header() {
           className="d-flex align-items-center gap-2 text-decoration-none text-dark"
         >
           <Image
-            src="/logo.png"
+            src="/logo.svg"
             alt="Butiápps Logo"
             width={36}
             height={36}

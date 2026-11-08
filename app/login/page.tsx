@@ -92,7 +92,7 @@ export default function LoginPage() {
           {/* Brand Logo */}
           <div className="d-flex align-items-center justify-content-center gap-3 mb-4">
             <Image
-              src="/logo.png"
+              src="/logo2.svg"
               alt="Butiápps Logo"
               width={48}
               height={48}
