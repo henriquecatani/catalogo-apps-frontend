@@ -335,9 +335,21 @@ function AppDetailContent() {
 
         {/* Título, Desenvolvedor e Botão Website */}
         <div className="flex-grow-1">
-          <h1 className="fw-normal mb-0" style={{ fontSize: "2rem" }}>
-            {app.name}
-          </h1>
+          <div className="d-flex align-items-center gap-2">
+            <h1 className="fw-normal mb-0" style={{ fontSize: "2rem" }}>
+              {app.name}
+            </h1>
+            <button
+              type="button"
+              onClick={() => router.push(`/apps/create?id=${appId}`)}
+              className="btn btn-sm btn-outline-secondary rounded-circle d-flex align-items-center justify-content-center"
+              style={{ width: "32px", height: "32px" }}
+              title="Editar aplicativo"
+              aria-label="Editar aplicativo"
+            >
+              <i className="bi bi-pencil"></i>
+            </button>
+          </div>
           <p className="text-success mb-2" style={{ fontSize: "0.95rem" }}>
             {devId ? (
               <Link

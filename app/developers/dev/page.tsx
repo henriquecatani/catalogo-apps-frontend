@@ -4,6 +4,8 @@ import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams, useParams } from "next/navigation";
 import Image from "next/image";
 import AppCardItem from "@/app/components/AppCardItem";
+import DeveloperFormMenu from "@/app/components/DeveloperFormMenu";
+import { isAuthenticated } from "@/app/login/auth_service";
 import { Developer, App } from "@/app/types";
 
 const API_BASE = "http://localhost:3000";
@@ -40,6 +42,8 @@ function DeveloperDetailContent() {
 
   const [developer, setDeveloper] = useState<Developer>(DEFAULT_DEV);
   const [loading, setLoading] = useState(true);
+  const [showEditMenu, setShowEditMenu] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // Requisição GET para /developers/{dev_id}
   useEffect(() => {
@@ -84,7 +88,15 @@ function DeveloperDetailContent() {
     return () => {
       isMounted = false;
     };
-  }, [devId]);
+  }, [devId, refreshKey]);
+
+  function handleEditClick() {
+    if (!isAuthenticated()) {
+      router.push("/login");
+      return;
+    }
+    setShowEditMenu((prev) => !prev);
+  }
 
   const appsList = developer.apps ?? [];
 
@@ -125,11 +137,37 @@ function DeveloperDetailContent() {
           />
         )}
 
-        {/* Nome do Desenvolvedor */}
-        <h1 className="fw-normal mb-0" style={{ fontSize: "2.2rem" }}>
-          {developer.name}
-        </h1>
+        {/* Nome do Desenvolvedor + Editar */}
+        <div className="d-flex align-items-center gap-2">
+          <h1 className="fw-normal mb-0" style={{ fontSize: "2.2rem" }}>
+            {developer.name}
+          </h1>
+          <button
+            type="button"
+            onClick={handleEditClick}
+            className="btn btn-sm btn-outline-secondary rounded-circle d-flex align-items-center justify-content-center"
+            style={{ width: "34px", height: "34px" }}
+            title="Editar desenvolvedor"
+            aria-label="Editar desenvolvedor"
+          >
+            <i className="bi bi-pencil"></i>
+          </button>
+        </div>
       </div>
+
+      {/* Menu de Edição */}
+      {showEditMenu && (
+        <div className="mb-4" style={{ maxWidth: "420px" }}>
+          <DeveloperFormMenu
+            initialDeveloper={developer}
+            onSaved={() => {
+              setShowEditMenu(false);
+              setRefreshKey((k) => k + 1);
+            }}
+            onCancel={() => setShowEditMenu(false)}
+          />
+        </div>
+      )}
 
       {/* Seção de Apps do Desenvolvedor */}
       <section className="mt-5 text-center">
@@ -150,10 +188,7 @@ function DeveloperDetailContent() {
         {/* Grid de Cards de Aplicativos */}
         <div className="row g-4 text-start">
           {appsList.map((app, index) => (
-            <div
-              key={app.id ?? index}
-              className="col-12 col-sm-6 col-lg-4"
-            >
+            <div key={app.id ?? index} className="col-12 col-sm-6 col-lg-4">
               <AppCardItem
                 app={{
                   ...app,

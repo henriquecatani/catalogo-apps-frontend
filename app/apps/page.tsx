@@ -4,16 +4,10 @@ import { FormEvent, Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import AppCardItem from "@/app/components/AppCardItem";
 import { App, PaginatedResponse } from "@/app/types";
+import {CATEGORIES} from "@/app/types/CATEGORIES";
 
 const API_BASE = "http://localhost:3000";
 const ITEMS_PER_PAGE = 9;
-
-const CATEGORIES = [
-  { label: "Browsers", value: "Browsers" },
-  { label: "Text Editor", value: "Text Editor" },
-  { label: "Word Processor", value: "Word Processor" },
-  { label: "Office Suite", value: "Office Suite" },
-];
 
 const PRICING_OPTIONS = [
   { label: "Grátis", value: "free" },
@@ -248,6 +242,20 @@ function AppsListContent() {
       <section className="row mt-5 g-4">
         {/* Left Sidebar Filters */}
         <aside className="col-12 col-md-3 col-lg-2">
+          {/* Botão Criar Aplicativo */}
+          <button
+            type="button"
+            onClick={() => router.push("/apps/create")}
+            className="btn rounded-pill w-100 py-2 mb-3 fw-medium shadow-sm"
+            style={{
+              backgroundColor: "#8ce071",
+              color: "#222222",
+              fontSize: "0.9rem",
+            }}
+          >
+            + Cadastrar App
+          </button>
+
           {/* Categorias */}
           <div className="bg-white border mb-4">
             <div className="px-3 py-2 border-bottom fw-normal text-dark">
