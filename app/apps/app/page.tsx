@@ -403,9 +403,15 @@ function AppDetailContent() {
 
           <span
             className="badge rounded-pill px-3 py-2 fw-normal"
-            style={{ backgroundColor: "#1e8238", fontSize: "0.85rem" }}
+            style={{
+              backgroundColor:
+              (app.pricing === "foss") ? "#007bce"
+              : (app.pricing === "paid") ? "#ce3700"
+              : (app.pricing === "freemium") ? "#ce8d00"
+              :  "#357521",
+              fontSize: "0.85rem" }}
           >
-            {app.pricing || "free"}
+            {(app.pricing || "free").toUpperCase()}
           </span>
         </div>
       </div>

@@ -138,12 +138,16 @@ export default function AppCardItem({
           <span
             className="badge rounded-pill px-4 py-2 fw-medium"
             style={{
-              backgroundColor: "#357521",
-              color: "#000000",
+              backgroundColor:
+                (appPricing === "foss") ? "#007bce"
+                  : (appPricing === "paid") ? "#ce3700"
+                      : (appPricing === "freemium") ? "#ce8d00"
+                          :  "#357521",
+              color: "#FFFFFF",
               fontSize: "0.95rem",
             }}
           >
-            {appPricing}
+            {appPricing.toUpperCase()}
           </span>
         </div>
       </Link>
