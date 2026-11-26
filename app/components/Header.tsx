@@ -38,7 +38,7 @@ export default function Header() {
   return (
     <header className="py-3 px-4">
       <div className="container-fluid d-flex align-items-center justify-content-between position-relative">
-        {/* Brand Logo & Name */}
+        {/* logo */}
         <Link
           href="/"
           className="d-flex align-items-center gap-2 text-decoration-none text-dark"
@@ -58,7 +58,7 @@ export default function Header() {
           </span>
         </Link>
 
-        {/* Center Navigation Pill */}
+        {/* navigation bar */}
         <nav className="bg-white rounded-pill shadow-sm p-1 d-flex align-items-center gap-4 position-absolute top-50 start-50 translate-middle"
           style={{ border: "1px solid #e5e5e5" }}
         >
@@ -84,7 +84,7 @@ export default function Header() {
           </Link>
         </nav>
 
-        {/* Right User Profile / Login Button */}
+        {/* profile / login button */}
         <div>
           <Link
             href={autenticado ? "/profile" : "/login"}

@@ -99,7 +99,7 @@ export default function ReviewFormCard({
 
       onSuccess();
     } catch {
-      setError("Erro ao conectar com o servidor. Verifique se a API está rodando.");
+      setError("Erro ao conectar com o servidor.");
     } finally {
       setLoading(false);
     }
@@ -131,7 +131,7 @@ export default function ReviewFormCard({
 
       onSuccess();
     } catch {
-      setError("Erro ao conectar com o servidor. Verifique se a API está rodando.");
+      setError("Erro ao conectar com o servidor.");
     } finally {
       setLoading(false);
     }
@@ -185,7 +185,7 @@ export default function ReviewFormCard({
           </div>
         </div>
 
-        {/* Input de Título */}
+        {/* input de título */}
         <div className="mb-3">
           <label className="form-label text-secondary small mb-1">
             Título da avaliação:
@@ -193,14 +193,14 @@ export default function ReviewFormCard({
           <input
             type="text"
             className="form-control rounded-3"
-            placeholder="Ex: Muito bom o App"
+            placeholder="Diga o que achou do App"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             required
           />
         </div>
 
-        {/* Input / Textarea da Review */}
+        {/* input da review */}
         <div className="mb-3">
           <label className="form-label text-secondary small mb-1">
             Comentário:
@@ -215,7 +215,7 @@ export default function ReviewFormCard({
           />
         </div>
 
-        {/* Botões de Ação */}
+        {/* botões */}
         <div className="d-flex justify-content-end gap-2">
           {isEditing && (
             <button
