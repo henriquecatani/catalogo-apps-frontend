@@ -31,10 +31,10 @@ async function fetchAppsList(endpoints: string[]): Promise<Partial<App>[]> {
         const items: Partial<App>[] = Array.isArray(json)
           ? json
           : Array.isArray(json?.data)
-          ? json.data
-          : Array.isArray(json?.items)
-          ? json.items
-          : [];
+            ? json.data
+            : Array.isArray(json?.items)
+              ? json.items
+              : [];
         if (items.length > 0) {
           return items.slice(0, 10);
         }
@@ -49,27 +49,22 @@ async function fetchAppsList(endpoints: string[]): Promise<Partial<App>[]> {
 export default function HomePage() {
   const router = useRouter();
   const [search, setSearch] = useState("");
-  const [trendingApps, setTrendingApps] = useState<Partial<App>[]>(FALLBACK_APPS);
+  const [trendingApps, setTrendingApps] =
+    useState<Partial<App>[]>(FALLBACK_APPS);
   const [browserApps, setBrowserApps] = useState<Partial<App>[]>(FALLBACK_APPS);
-  const [textEditorApps, setTextEditorApps] = useState<Partial<App>[]>(FALLBACK_APPS);
+  const [textEditorApps, setTextEditorApps] =
+    useState<Partial<App>[]>(FALLBACK_APPS);
 
   useEffect(() => {
-    fetchAppsList([
-      "/api/apps?page=1&limit=10",
-      "/api/apps/trending",
-    ]).then(setTrendingApps);
+    fetchAppsList(["/api/apps?page=1&limit=10"]).then(setTrendingApps);
 
-    fetchAppsList([
-      "/api/apps?category=Browsers&page=1&limit=10",
-      "/api/apps?category=Browser&page=1&limit=10",
-      "/api/apps?category=browser&page=1&limit=10",
-    ]).then(setBrowserApps);
+    fetchAppsList(["/api/apps?category=Browsers&page=1&limit=10"]).then(
+      setBrowserApps,
+    );
 
-    fetchAppsList([
-      "/api/apps?category=Text%20Editor&page=1&limit=10",
-      "/api/apps?category=Text%20Editors&page=1&limit=10",
-      "/api/apps?category=text-editor&page=1&limit=10",
-    ]).then(setTextEditorApps);
+    fetchAppsList(["/api/apps?category=Text%20Editor&page=1&limit=10"]).then(
+      setTextEditorApps,
+    );
   }, []);
 
   function handleSearch(e: FormEvent) {
